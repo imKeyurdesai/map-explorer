@@ -28,15 +28,15 @@ import mapboxgl from "mapbox-gl";
 function App() {
   const [country, setCountry] = useState([]);
 
-  // const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
   const [selectcountry, setselectcountry] = useState(null);
   const [accordionValue, setAccordionValue] = useState(undefined);
+  const [searchInput, setSearchInput] = useState("");
 
   const handle_submit = async (val: string) => {
     try {
-      // setLoading(true);
       if (val.trim().length !== 0) {
         await fetch(`https://restcountries.com/v3.1/name/${val}`)
           .then((response) => response.json())
@@ -45,19 +45,29 @@ function App() {
               setCountry([]);
             } else {
               setCountry(data);
-              update_data(data);
             }
+            setLoading(false);
           });
       }
-      // setLoading(false);
     } catch (error) {
       console.error(error);
     }
   };
 
-  const update_data = async (city: string) => {
-    setselectcountry(country.find((ele) => ele.name.common === city));
+  const update_data = (cityName: string) => {
+    if (cityName) {
+      setselectcountry(country.find((ele) => ele.name.common === cityName));
+    }
   };
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (searchInput) {
+        handle_submit(searchInput);
+      }
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   //map starts here
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -87,23 +97,12 @@ function App() {
     });
 
     setAccordionValue("info");
-
-    // mapRef.current.addSource("mapbox-dem", {
-    //   type: "raster-dem",
-    //   url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-    //   tileSize: 512,
-    //   maxzoom: 14,
-    // });
-
-    // mapRef.current.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
-
-    // mapRef.current.getTerrain();
   }, [selectcountry]);
 
   return (
     <>
       <div className="absolute m-5 z-10">
-        <ModeToggle />
+        <ModeToggle/>
       </div>
       <div>
         <section className="flex justify-center items-center">
@@ -130,11 +129,64 @@ function App() {
                       placeholder="Search Country..."
                       className="h-9"
                       onValueChange={(val) => {
-                        handle_submit(val);
+                        setLoading(true);
+                        setSearchInput(val);
                       }}
                     />
                     <CommandList>
-                      <CommandEmpty>No Country found.</CommandEmpty>
+                      <CommandEmpty>
+                        {loading ? (
+                          <div className="flex justify-center items-center">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width={30}
+                              height={30}
+                              viewBox="0 0 24 24"
+                            >
+                              <g
+                                fill="none"
+                                stroke="#fff"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeDasharray={18}
+                                  d="M12 3c4.97 0 9 4.03 9 9"
+                                >
+                                  <animate
+                                    fill="freeze"
+                                    attributeName="stroke-dashoffset"
+                                    dur="0.3s"
+                                    values="18;0"
+                                  ></animate>
+                                  <animateTransform
+                                    attributeName="transform"
+                                    dur="1.5s"
+                                    repeatCount="indefinite"
+                                    type="rotate"
+                                    values="0 12 12;360 12 12"
+                                  ></animateTransform>
+                                </path>
+                                <path
+                                  strokeDasharray={60}
+                                  d="M12 3c4.97 0 9 4.03 9 9c0 4.97 -4.03 9 -9 9c-4.97 0 -9 -4.03 -9 -9c0 -4.97 4.03 -9 9 -9Z"
+                                  opacity={0.3}
+                                >
+                                  <animate
+                                    fill="freeze"
+                                    attributeName="stroke-dashoffset"
+                                    dur="1.2s"
+                                    values="60;0"
+                                  ></animate>
+                                </path>
+                              </g>
+                            </svg>
+                          </div>
+                        ) : (
+                          "No Country found."
+                        )}
+                      </CommandEmpty>
                       <CommandGroup>
                         {country?.map((Country) => (
                           <CommandItem
@@ -142,9 +194,10 @@ function App() {
                             value={Country.name.common}
                             onSelect={(currentValue) => {
                               setValue(
-                                currentValue === value ? "" : currentValue
+                                currentValue === value ? "" : currentValue,
                               );
                               setOpen(false);
+
                               update_data(currentValue);
                             }}
                           >
@@ -154,7 +207,7 @@ function App() {
                                 "ml-auto",
                                 value === Country.name.common
                                   ? "opacity-100"
-                                  : "opacity-0"
+                                  : "opacity-0",
                               )}
                             />
                           </CommandItem>
@@ -171,7 +224,7 @@ function App() {
           <div ref={mapContainerRef} id="map" style={{ height: "100%" }} />
         </div>
       </div>
-      <div className="absolute top-30 right-20">
+      <div className="absolute top-30 right-1 lg:right-20 w-40 lg:w-80">
         <Accordion
           className="backdrop-blur-3xl"
           type="single"
@@ -180,30 +233,30 @@ function App() {
           onValueChange={setAccordionValue}
         >
           <AccordionItem value="info">
-            <AccordionTrigger className="bold text-3xl mb-3">
+            <AccordionTrigger className="bold text-xl lg:text-3xl mb-3">
               More About Country
             </AccordionTrigger>
             <AccordionContent className="h-full">
               {selectcountry ? (
                 <section className="max-w-60">
-                  <div className="text-2xl flex gap-2 items-center">
+                  <div className="text-xl lg:text-2xl flex gap-2 items-center">
                     <img
-                      className="h-5 "
+                      className="h-5"
                       src={selectcountry.flags.svg}
                       alt={selectcountry.name.official}
                     />{" "}
                     {selectcountry.name.common}
                   </div>
-                  <div className="text-xl">
+                  <div className="lg:text-xl">
                     Capital : {selectcountry.capital}
                   </div>
-                  <div className="text-xl">
+                  <div className="lg:text-xl">
                     Continent : {selectcountry.region}
                   </div>
-                  <div className="text-xl">
+                  <div className="lg:text-xl">
                     Population : {selectcountry.population}
                   </div>
-                  <div className="text-xl">
+                  <div className="lg:text-xl">
                     <div>latitude : {selectcountry.latlng[0]}</div>
                     <div>longitude: {selectcountry.latlng[1]}</div>
                   </div>
